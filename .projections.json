@@ -1,0 +1,12 @@
+{
+  "*": {"make": "bundle exec rake test"},
+  "*.rb": {"path": "lib"},
+  "lib/bdmaas/*.rb": {
+    "type": "source",
+    "alternate": "test/bdmaas/{}_test.rb"
+  },
+  "test/bdmaas/*_test.rb": {
+    "type": "test",
+    "alternate": "lib/bdmaas/{}.rb"
+  }
+}
