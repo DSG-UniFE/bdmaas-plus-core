@@ -1,19 +1,31 @@
-# Business Driven Management as a Service Plus (BDMaaS+) Engine
+# BDMaaS+ Engine
 
-BDMaaS+ is a management framework to optimize the component placement of large
-scale IT services in hybrid Cloud environments. This repository contains the
-main (engine) component of the framework.
+BDMaaS+ (Business Driven Management as a Service Plus) is a management
+framework to optimize the component placement of large scale IT services in
+hybrid Cloud environments. This repository contains the main (engine) component
+of the framework.
 
 
 ## Recommended Installation
 
-You can install BDMaaS+ by cloning the git repository:
+As BDMaaS+ was developed in Ruby and leverages several other components, you
+will need both a working Ruby interpreter and the bundler dependency management
+tool. We recommend to use JRuby to best take advantage of the parallelism
+offered by your CPU.
 
-    git clone
+Once you have Ruby and bundler setup, you can install BDMaaS+ by cloning the
+git repository:
 
-then installing the dependencies:
+    git clone https://github.com/DSG-UniFE/bdmaas-plus-core.git
 
-    bundle install
+and then install the dependencies using bundler:
+
+    cd bdmaas-plus-core
+    bundle install --path=vendor/bundle
+
+(the --path parameter is not really needed but we still highly recommend it in
+order to keep your BDMaaS+ installation isolated and self contained and to
+avoid polluting your gem repository).
 
 
 ## Usage
