@@ -5,6 +5,7 @@ $:.unshift(LIBDIR) unless $:.include?(LIBDIR)
 
 begin
   require 'awesome_print'
+  require 'forwardable'
   require 'mhl'
   require 'sisfc'
   require 'sisfc/evaluation'
@@ -43,7 +44,7 @@ to_optimize = lambda do |component_allocation|
   discretized_components = component_allocation.map(&:to_i)
   # $stderr.puts "evaluating component allocation: #{discretized_components.inspect}"
 
-  sim = SISFC::Simulation.new(configuration: sim_conf, evaluator: evaluator)
+  sim = SISFC::Simulation.new(configuration: sim_conf, evaluator: evaluator, evaluation_type: :it_costs)
 
   res = {}
   begin
@@ -74,7 +75,7 @@ solver_conf = {
     min: [ 0 ] * problems_space_size,
     max: [ 500 ] * problems_space_size,
   },
-  exit_condition: lambda {|gen, best| gen >= 50 }, # exit after 50 generations
+  exit_condition: lambda {|gen, best| gen >= 30 }, # exit after 50 generations
   logger: :stderr,
   log_level: :info,
 }
@@ -83,7 +84,7 @@ solver_conf = {
 solver = MHL::QuantumPSOSolver.new(solver_conf)
 
 # run the solver
-best = solver.solve(to_optimize)
+best = solver.solve(to_optimize, concurrent: true)
 
 ap 'Best result:'
 ap(best, :indent => 2)

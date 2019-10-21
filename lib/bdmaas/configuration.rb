@@ -1,5 +1,4 @@
 require_relative './support/dsl_helper'
-require_relative './rechenberg_controller'
 
 module BDMaaS
 
