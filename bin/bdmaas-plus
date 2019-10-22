@@ -75,7 +75,7 @@ solver_conf = {
     min: [ 0 ] * problems_space_size,
     max: [ 500 ] * problems_space_size,
   },
-  exit_condition: lambda {|gen, best| gen >= 30 }, # exit after 50 generations
+  exit_condition: lambda {|gen, best| gen >= 15 }, # exit after 50 generations
   logger: :stderr,
   log_level: :info,
 }
