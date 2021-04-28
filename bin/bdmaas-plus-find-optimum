@@ -1,0 +1,118 @@
+#!/usr/bin/env ruby
+
+LIBDIR = File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib'))
+$:.unshift(LIBDIR) unless $:.include?(LIBDIR)
+
+begin
+  require 'awesome_print'
+  require 'forwardable'
+  require 'mhl'
+  require 'sisfc'
+  require 'sisfc/evaluation'
+  require 'bdmaas'
+  require 'bdmaas/local_search'
+rescue LoadError
+  require 'rubygems'
+  require 'awesome_print'
+  require 'mhl'
+  require 'sisfc'
+  require 'sisfc/evaluation'
+  require 'bdmaas'
+  require 'bdmaas/local_search'
+end
+
+unless File.exists? ARGV[0]
+  abort("Usage: #{File.basename(__FILE__)} simulator_config_file")
+end
+
+# load configuration files
+sim_conf = SISFC::Configuration.load_from_file(ARGV[0])
+evaluator = SISFC::Evaluator.new(sim_conf)
+
+# opt_conf = BDMaaS::Configuration.load_from_file(ARGV[1])
+opt_conf = {
+  local_search: {
+    rounds:       10,
+    strategy:     :exponential,
+    search_space: :R,
+  },
+}
+
+# the function to optimize simply runs a simulation with the given component
+# allocation as the service placement configuration
+to_optimize = lambda do |component_allocation|
+  discretized_components = component_allocation.map(&:to_i)
+  # $stderr.puts "evaluating component allocation: #{discretized_components.inspect}"
+
+  sim = SISFC::Simulation.new(configuration: sim_conf, evaluator: evaluator, evaluation_type: ARGV[1])
+
+  res = {}
+  begin
+    ls = BDMaaS::Optimizer::LocalSearch.new(sim, sim_conf, opt_conf, discretized_components)
+    res = ls.run
+  rescue => e
+    $stderr.puts e
+    $stderr.puts e.backtrace
+    $stderr.flush
+    exit
+  end
+
+  # $stderr.puts "discretized_components: #{discretized_components}, fitness: #{res.inspect}"
+
+  res[:fitness]
+end
+
+# calculate problems space size
+unconstrained_components = sim_conf.service_component_types.count do |(k,v)|
+  !v.has_key? :deployment_constraints
+end
+
+problems_space_size = unconstrained_components * sim_conf.data_centers.size
+
+best_allocation = [0.2502897754170853, 0.40201527303924883, 0.37622911128377884,
+   1.092747648329487, 0.3392969003194711, 4.391135160719721, 0, 1.1123935312564517,
+    0.09751304324028276, 0.7142678416078351, 0.025998996225568234, 7.436991020599041, 0, 0,
+     111.28251084107143, 42.57102830213623, 0.2939578050704573, 0, 0, 0.007490605537927334,
+      0.3999044614812857, 0, 3.435502954418471, 7.407693572004257, 12.43931149361926, 75.8154365942841,
+       59.65590341105218, 1.2078019748645559, 2.0950058635621485, 34.87773156171297, 2.3107279772052856,
+        1.2328959608579773, 0.2990300455181456, 0.18103170039226768, 0.014881077114378041,
+         0.009609480724467212, 1.5693912213008694, 0.14722603956612174, 5.069926461936984, 0, 0.1471616913146447,
+          0, 0.06898593483791911, 0, 1.521188078907379, 4.86659626987948, 4.93808729272253, 0, 1.852099971933718,
+           0.45713793560612587, 1.3554666087220966, 2.8353457113498957, 5.323072869558126, 2.1296298344456357,
+            12.452559632903398, 2.128422052088332, 0.20029454992386658, 0.9217848815946953, 0.11850004436598588,
+             0.7108769406878854, 0.10043853718335205, 0, 0.4839473493346026, 0.08464460124409573]
+
+starting_swarm = []
+starting_swarm << best_allocation
+39.times do
+  all = []
+  best_allocation.each do |e|
+    all << e + rand(0.05..2.0)
+  end
+  starting_swarm << all
+end  
+
+# setup solver configuration
+solver_conf = {
+  swarm_size: 40,
+  constraints: {
+    min: [ 0 ] * problems_space_size,
+    max: [ 500 ] * problems_space_size,
+  },
+  start_positions: starting_swarm,
+  exit_condition: lambda {|gen, best| gen >= 30 }, # exit after 50 generations
+  logger: :stderr,
+  log_level: :info,
+}
+
+# initialize the solver
+solver = MHL::QuantumPSOSolver.new(solver_conf)
+
+# run the solver
+best = solver.solve(to_optimize, concurrent: true)
+
+ap 'Best result:'
+ap(best, :indent => 2)
+
+puts "exiting"
+exit 0
