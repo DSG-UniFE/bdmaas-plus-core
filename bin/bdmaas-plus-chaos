@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+
+LIBDIR = File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib'))
+$:.unshift(LIBDIR) unless $:.include?(LIBDIR)
+
+begin
+  require 'awesome_print'
+  require 'forwardable'
+  require 'mhl'
+  require 'sisfc'
+  require 'sisfc/evaluation'
+  require 'bdmaas'
+  require 'bdmaas/local_search'
+rescue LoadError
+  require 'rubygems'
+  require 'awesome_print'
+  require 'mhl'
+  require 'sisfc'
+  require 'sisfc/evaluation'
+  require 'bdmaas'
+  require 'bdmaas/local_search'
+end
+
+unless File.exists? ARGV[0]
+  abort("Usage: #{File.basename(__FILE__)} simulator_config_file")
+end
+
+# load configuration files
+sim_conf = SISFC::Configuration.load_from_file(ARGV[0])
+evaluator = SISFC::Evaluator.new(sim_conf)
+
+# opt_conf = BDMaaS::Configuration.load_from_file(ARGV[1])
+# here something different from the BDMaaS+ optimization
+
+opt_conf = {
+  local_search: {
+    rounds:       10,
+    strategy:     :exponential,
+    search_space: :R,
+  },
+}
+
+# the function to optimize simply runs a simulation with the given component
+# allocation as the service placement configuration
+to_optimize = lambda do |component_allocation|
+  discretized_components = component_allocation.map(&:to_i)
+
+  # $stderr.puts "evaluating component allocation: #{discretized_components.inspect}"
+  sim = SISFC::Simulation.new(configuration: sim_conf, evaluator: evaluator, evaluation_type: ARGV[1])
+
+  res = {}
+  begin
+    ls = BDMaaS::Optimizer::LocalSearch.new(sim, sim_conf, opt_conf, discretized_components)
+    res = ls.run
+  rescue => e
+    $stderr.puts e
+    $stderr.puts e.backtrace
+    $stderr.flush
+    exit
+  end
+
+  # $stderr.puts "discretized_components: #{discretized_components}, fitness: #{res.inspect}"
+
+  res[:fitness]
+end
+
+puts "exiting"
+exit 0
