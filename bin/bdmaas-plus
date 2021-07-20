@@ -68,6 +68,7 @@ unconstrained_components = sim_conf.service_component_types.count do |(k,v)|
 end
 problems_space_size = unconstrained_components * sim_conf.data_centers.size
 
+puts "Problems_space_size #{problems_space_size}"
 # setup solver configuration
 solver_conf = {
   swarm_size: 40,
@@ -75,7 +76,7 @@ solver_conf = {
     min: [ 0 ] * problems_space_size,
     max: [ 500 ] * problems_space_size,
   },
-  exit_condition: lambda {|gen, best| gen >= 15 }, # exit after 50 generations
+  exit_condition: lambda {|gen, best| gen >= 5 }, # exit after 50 generations
   logger: :stderr,
   log_level: :info,
 }

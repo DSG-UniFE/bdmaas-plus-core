@@ -10,7 +10,7 @@ begin
   require 'sisfc'
   require 'sisfc/evaluation'
   require 'bdmaas'
-  require 'bdmaas/local_search'
+  require 'bdmaas/chaos_search'
 rescue LoadError
   require 'rubygems'
   require 'awesome_print'
@@ -18,7 +18,7 @@ rescue LoadError
   require 'sisfc'
   require 'sisfc/evaluation'
   require 'bdmaas'
-  require 'bdmaas/local_search'
+  require 'bdmaas/chaos_search'
 end
 
 unless File.exists? ARGV[0]
@@ -32,6 +32,16 @@ evaluator = SISFC::Evaluator.new(sim_conf)
 # opt_conf = BDMaaS::Configuration.load_from_file(ARGV[1])
 # here something different from the BDMaaS+ optimization
 
+
+# this is the best allocation found for the video service application
+# try to evaluate different allocation strategy
+
+best_allocation = [1.3404367743291208, 0, 112.57838722700336, 13.800192083580818, 67.61429196325096, 118.93658151009214,
+   42.3304122341319, 3.243049388951846, 8.038950175101203, 4.341323582236242, 29.077700032199353, 97.08905836044393,
+   24.606518837777713, 13.322759723673247, 3.7339048047762056, 0, 0, 39.73270412799084, 5.1303422269863015,
+  5.026367317683077, 2.087505346351132, 0, 0, 0.9351259312319028]
+
+
 opt_conf = {
   local_search: {
     rounds:       10,
@@ -42,6 +52,7 @@ opt_conf = {
 
 # the function to optimize simply runs a simulation with the given component
 # allocation as the service placement configuration
+
 to_optimize = lambda do |component_allocation|
   discretized_components = component_allocation.map(&:to_i)
 
@@ -50,7 +61,7 @@ to_optimize = lambda do |component_allocation|
 
   res = {}
   begin
-    ls = BDMaaS::Optimizer::LocalSearch.new(sim, sim_conf, opt_conf, discretized_components)
+    ls = BDMaaS::Optimizer::ChaosSearch.new(sim, sim_conf, opt_conf, discretized_components)
     res = ls.run
   rescue => e
     $stderr.puts e
@@ -58,11 +69,11 @@ to_optimize = lambda do |component_allocation|
     $stderr.flush
     exit
   end
-
   # $stderr.puts "discretized_components: #{discretized_components}, fitness: #{res.inspect}"
-
   res[:fitness]
 end
+
+to_optimize.call(best_allocation)
 
 puts "exiting"
 exit 0
