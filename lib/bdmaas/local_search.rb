@@ -38,7 +38,7 @@ module BDMaaS
           # SearchSpace.new(@opt_conf.dig(:local_search, :search_space)).sample
           begin
             vm_allocation = allocator.allocate(@component_placement, aggressiveness: alpha)
-            fitness       = @sim.evaluate_allocation(vm_allocation)
+            fitness       = @sim.evaluate_allocation(vm_allocation)[:evaluation]
           rescue => e
             $stderr.puts e.inspect
             $stderr.puts e.backtrace
