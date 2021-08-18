@@ -56,35 +56,55 @@ module BDMaaS
             #puts fitness[:evaluation]
             #puts "***Evaluation***"
             total_failed = 0
-            # I was trying to collect the stats here
-            # analyze each workflow and check for failed requests
-            # increase the number of VM
-            # or migrate VM instances to mitigate injected chaos faults
-            fitness[:stats].each do |w,v|
-              v.each do |k, stat|
-                failed = stat.failed
-                total_failed += failed
-                puts "Workflow: #{w}, CustomerID: #{k}, failed: #{failed}"
-                # if consistent nunber of failed requests
-                if failed > 1
-                  # mitigate injected faults effects
-                  vm_conf, index = vm_allocation.shuffle.each_with_index.min_by {|x, e| x[:vm_num]}
-                  #puts "Index *** #{index} *** #{vm_conf}"
-                  # increase the resource to prevent fault chaos
-                  # here --- need to operate by selecting another data center
-                  vm_conf[:vm_num] = vm_conf[:vm_num] + 2
-                  vm_allocation[index] = vm_conf
-                  # random allocation strategy to reduce faults
-                  # --- random strategy
-
-                  #size = @component_placement.length
-                  #dc_service_vm = rand(size)
-                  #@component_placement[dc_service_vm] += 2.0
-                  # find closest data-center 
-                  # and allocate more VMs
-                  # here we need to keep working on this
+            if false
+              # I was trying to collect the stats here
+              # analyze each workflow and check for failed requests
+              # increase the number of VM
+              # or migrate VM instances to mitigate injected chaos faults
+              fitness[:stats].each do |w,v|
+                v.each do |k, stat|
+                  failed = stat.failed
+                  total_failed += failed
+                  puts "Workflow: #{w}, CustomerID: #{k}, failed: #{failed}"
+                  # if consistent nunber of failed requests
+                  if failed > 1
+                    # mitigate injected faults effects
+                    # here there is some random selection (results change at each iteration)
+                    vm_conf, index = vm_allocation.shuffle.each_with_index.min_by {|x, e| x[:vm_num]}
+                    puts "Index *** #{index} *** #{vm_conf}"
+                    # increase the resource to prevent fault chaos
+                    # here --- need to operate by selecting another data center
+                    vm_conf[:vm_num] = vm_conf[:vm_num] + 2
+                    vm_allocation[index] = vm_conf
+                    abort
+                    # random allocation strategy to reduce faults
+                    # --- random strategy
+                    #
+                    #size = @component_placement.length
+                    #dc_service_vm = rand(size)
+                    #@component_placement[dc_service_vm] += 2.0
+                    # find closest data-center 
+                    # and allocate more VMs
+                    # here we need to keep working on this
+                  end
                 end
               end
+            end
+            fitness[:failure_stats].each do |dc, vm_conf|
+              vm_conf.each do |st, fn|
+                total_failed += fn 
+                if fn > 1
+                  els = vm_allocation.each_with_index.select {|ae, i| ae[:dc_id] == dc && ae[:component_type] == st}
+                  # puts els
+                  # pick a random size
+                  el = els.sample
+                  #puts "VM num: #{el[0][:vm_num]}"
+                  # increase the number of VMs
+                  el[0][:vm_num] += 1
+                  # update the allocation here
+                  vm_allocation[el[1]] = el[0]
+                end
+                end
             end
 
             puts "Total failed requests: #{total_failed}"
