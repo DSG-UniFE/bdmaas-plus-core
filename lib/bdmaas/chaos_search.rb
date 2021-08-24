@@ -100,7 +100,7 @@ module BDMaaS
                   el = els.sample
                   #puts "VM num: #{el[0][:vm_num]}"
                   # increase the number of VMs
-                  el[0][:vm_num] += 1
+                  el[0][:vm_num] += 2
                   # update the allocation here
                   vm_allocation[el[1]] = el[0]
                 end
