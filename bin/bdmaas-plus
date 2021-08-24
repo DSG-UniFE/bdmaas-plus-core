@@ -85,7 +85,7 @@ solver_conf = {
 solver = MHL::QuantumPSOSolver.new(solver_conf)
 
 # run the solver
-best = solver.solve(to_optimize, concurrent: true)
+best = solver.solve(to_optimize, concurrent: false)
 
 ap 'Best result:'
 ap(best, :indent => 2)

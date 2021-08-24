@@ -11,13 +11,14 @@ module BDMaaS
 
       include BDMaaS::Logging
 
-      def initialize(simulation, sim_conf, opt_conf, component_placement)
+      def initialize(simulation, sim_conf, opt_conf, component_placement, policy_type)
         @sim                 = simulation
         @sim_conf            = sim_conf
         @opt_conf            = opt_conf
         @component_placement = component_placement
         @alpha_dist          = ERV::RandomVariable.new(distribution: :uniform, 
-                                      args: { min_value: 0.01, max_value: 100.0 })
+                                      args: { min_value: 0.01, max_value: 100.0})
+        @policy_type         = policy_type
       end
 
       def run
@@ -51,60 +52,73 @@ module BDMaaS
               $stderr.flush
               exit
             end
-
             #puts "***Evaluation***"
             #puts fitness[:evaluation]
             #puts "***Evaluation***"
+            
+            # there is some issue (I cannot make the case statement work properly)
+            @policy_type = :migrate
+
+            # then try to mitigate faults effects
             total_failed = 0
-            if false
-              # I was trying to collect the stats here
-              # analyze each workflow and check for failed requests
-              # increase the number of VM
-              # or migrate VM instances to mitigate injected chaos faults
-              fitness[:stats].each do |w,v|
-                v.each do |k, stat|
-                  failed = stat.failed
-                  total_failed += failed
-                  puts "Workflow: #{w}, CustomerID: #{k}, failed: #{failed}"
-                  # if consistent nunber of failed requests
-                  if failed > 1
-                    # mitigate injected faults effects
-                    # here there is some random selection (results change at each iteration)
-                    vm_conf, index = vm_allocation.shuffle.each_with_index.min_by {|x, e| x[:vm_num]}
-                    puts "Index *** #{index} *** #{vm_conf}"
-                    # increase the resource to prevent fault chaos
-                    # here --- need to operate by selecting another data center
-                    vm_conf[:vm_num] = vm_conf[:vm_num] + 2
-                    vm_allocation[index] = vm_conf
-                    abort
-                    # random allocation strategy to reduce faults
-                    # --- random strategy
-                    #
-                    #size = @component_placement.length
-                    #dc_service_vm = rand(size)
-                    #@component_placement[dc_service_vm] += 2.0
-                    # find closest data-center 
-                    # and allocate more VMs
-                    # here we need to keep working on this
+            case @policy_type
+              
+            # migrate VMs to another datacenter
+            # activate VMs into another datacenter
+
+            when :migrate
+              puts "Selected correct policy"
+              fitness[:failure_stats].each do |dc, vm_conf|
+                vm_conf.each do |st, fn|
+                  # st is service type
+                  # fn is failure number
+                  total_failed += fn 
+                  # if we are experiencing failures
+                  if fn > 1
+
+                    #els = vm_allocation.each_with_index.select {|ae, i| ae[:dc_id] == dc && ae[:component_type] == st}
+                    # verify what happens in the other DCs
+
+                    alternative = vm_allocation.each_with_index.select {|ae, i| ae[:dc_id] != dc && ae[:component_type] == st}
+
+                    # here some debug
+                    puts "Alternative #{alternative}"
+                    # we should verify the situation here
+                    # let's try to pick up the element
+                    al = alternative.sample
+                    al_failures = fitness[:failure_stats][al[0][:dc_id]][:component_type]
+                    
+                    puts "al_failures #{al_failures}"
+
+                    # increase the number of VM into another DC
+                    if al_failures.nil? || al_failures < fn
+                      al[0][:vm_num] += 2
+                      # update the allocation here
+                      vm_allocation[al[1]] = al[0]
+                    end
                   end
                 end
               end
-            end
-            fitness[:failure_stats].each do |dc, vm_conf|
-              vm_conf.each do |st, fn|
-                total_failed += fn 
-                if fn > 1
-                  els = vm_allocation.each_with_index.select {|ae, i| ae[:dc_id] == dc && ae[:component_type] == st}
-                  # puts els
-                  # pick a random size
-                  el = els.sample
-                  #puts "VM num: #{el[0][:vm_num]}"
-                  # increase the number of VMs
-                  el[0][:vm_num] += 2
-                  # update the allocation here
-                  vm_allocation[el[1]] = el[0]
+              else
+                puts "Default policy here (no migration)" 
+                fitness[:failure_stats].each do |dc, vm_conf|
+                  vm_conf.each do |st, fn|
+                    total_failed += fn 
+                    if fn > 1
+                      els = vm_allocation.each_with_index.select {|ae, i| ae[:dc_id] == dc && ae[:component_type] == st}
+                      # puts els
+                      # pick a random size
+                      el = els.sample
+                      #puts "VM num: #{el[0][:vm_num]}"
+                      # increase the number of VMs
+                      el[0][:vm_num] += 2
+                      # update the allocation here
+                      vm_allocation[el[1]] = el[0]
+                    end
+                  end
                 end
-                end
+
+
             end
 
             puts "Total failed requests: #{total_failed}"
@@ -112,12 +126,13 @@ module BDMaaS
             { vm_allocation:       vm_allocation,
               fitness:             fitness[:evaluation],
               stats:               fitness[:stats],
+              total_failures:      total_failed,
               component_placement: @component_placement }
         end
 
         #promises.map(&:wait)
         # return best example
-        results.max_by {|x| x[:fitness]}
+        results.min_by {|x| x[:total_failures]}
       end
     end
 
