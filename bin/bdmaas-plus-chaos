@@ -29,6 +29,10 @@ end
 sim_conf = SISFC::Configuration.load_from_file(ARGV[0])
 evaluator = SISFC::Evaluator.new(sim_conf)
 
+policy = ARGV[2].to_sym unless ARGV[2].nil?
+
+puts "Chaos Management policy is: #{policy}"
+
 # opt_conf = BDMaaS::Configuration.load_from_file(ARGV[1])
 # here something different from the BDMaaS+ optimization
 
@@ -64,7 +68,7 @@ to_optimize = lambda do |component_allocation|
 
   res = {}
   begin
-    ls = BDMaaS::Optimizer::ChaosSearch.new(sim, sim_conf, opt_conf, discretized_components)
+    ls = BDMaaS::Optimizer::ChaosSearch.new(sim, sim_conf, opt_conf, discretized_components, policy)
     res = ls.run
   rescue => e
     $stderr.puts e
@@ -72,7 +76,7 @@ to_optimize = lambda do |component_allocation|
     $stderr.flush
     exit
   end
-  # $stderr.puts "discretized_components: #{discretized_components}, fitness: #{res.inspect}"
+  puts "Results: fitness #{res[:fitness]} failures: #{res[:conf_failures]}"
   res[:fitness]
 end
 

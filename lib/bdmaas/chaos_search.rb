@@ -52,9 +52,6 @@ module BDMaaS
               $stderr.flush
               exit
             end
-            #puts "***Evaluation***"
-            #puts fitness[:evaluation]
-            #puts "***Evaluation***"
             
             # there is some issue (I cannot make the case statement work properly)
             @policy_type = :migrate
@@ -67,7 +64,6 @@ module BDMaaS
             # activate VMs into another datacenter
 
             when :migrate
-              puts "Selected correct policy"
               fitness[:failure_stats].each do |dc, vm_conf|
                 vm_conf.each do |st, fn|
                   # st is service type
@@ -82,13 +78,13 @@ module BDMaaS
                     alternative = vm_allocation.each_with_index.select {|ae, i| ae[:dc_id] != dc && ae[:component_type] == st}
 
                     # here some debug
-                    puts "Alternative #{alternative}"
+                    #puts "Alternative #{alternative}"
                     # we should verify the situation here
                     # let's try to pick up the element
                     al = alternative.sample
                     al_failures = fitness[:failure_stats][al[0][:dc_id]][:component_type]
                     
-                    puts "al_failures #{al_failures}"
+                    #puts "al_failures #{al_failures}"
 
                     # increase the number of VM into another DC
                     if al_failures.nil? || al_failures < fn
@@ -100,7 +96,6 @@ module BDMaaS
                 end
               end
               else
-                puts "Default policy here (no migration)" 
                 fitness[:failure_stats].each do |dc, vm_conf|
                   vm_conf.each do |st, fn|
                     total_failed += fn 
@@ -121,18 +116,26 @@ module BDMaaS
 
             end
 
-            puts "Total failed requests: #{total_failed}"
+            #puts "Total failed requests: #{total_failed}
+
+            conf_failures = 0
+            fitness[:stats].each do |c, w| 
+              w.each do |_, s| 
+                conf_failures += s.failed
+              end
+            end
+            puts "Conf Failures: #{conf_failures}"
 
             { vm_allocation:       vm_allocation,
               fitness:             fitness[:evaluation],
               stats:               fitness[:stats],
-              total_failures:      total_failed,
+              conf_failures:       conf_failures,
               component_placement: @component_placement }
         end
 
         #promises.map(&:wait)
         # return best example
-        results.min_by {|x| x[:total_failures]}
+        results.min_by {|x| x[:conf_failures]}
       end
     end
 
